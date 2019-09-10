@@ -1,8 +1,8 @@
 # build all programs with names like `membug[0-9]`
 MEMBUG_PROGRAMS = $(patsubst %.cc,%,$(sort $(wildcard membug[0-9].cc)))
 SIMPLE_PROGRAMS = $(MEMBUG_PROGRAMS) objects names stl0 stl1 stl2
-PROGRAMS = $(SIMPLE_PROGRAMS) testinsert0
-ALLPROGRAMS = $(PROGRAMS) greet inv
+PROGRAMS = $(SIMPLE_PROGRAMS) testinsert0 greet
+ALLPROGRAMS = $(PROGRAMS) inv
 
 all: $(PROGRAMS)
 

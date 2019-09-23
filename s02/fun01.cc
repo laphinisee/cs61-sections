@@ -1,4 +1,4 @@
-#include <string.h>
+#include <cstring>
 
 int fun(const char* s) {
     if (strchr(s, '!') != nullptr) {

@@ -1,6 +1,6 @@
 #include <sstream>
 #include <iostream>
-#include <stdlib.h>
+#include <cstdlib>
 
 int fun(const char* s);
 
@@ -11,7 +11,7 @@ static void yay() {
     exit(0);
 }
 
-static void boo() {
+static void no_fun() {
     std::cerr << "😿😿😿😿😿😿😿😿 no fun 😿😿😿😿😿😿😿😿\n";
     exit(1);
 }
@@ -31,6 +31,6 @@ int main(int argc, char** argv) {
     if (fun(argstr.c_str()) == 0) {
         yay();
     } else {
-        boo();
+        no_fun();
     }
 }

@@ -5,8 +5,8 @@ FULLSOURCES = $(patsubst fun%.cc,fun%.s,$(sort $(wildcard fun[0-9][0-9].cc)))
 all: $(PROGRAMS) $(FULLSOURCES)
 
 O = s
+PIE ?= 0
 include ../common/rules.mk
-LDFLAGS := $(if $(ISLINUX),-no-pie,)
 
 %.o: %.cc $(BUILDSTAMP)
 	$(CXX) $(CPPFLAGS) $(filter-out -g,$(CXXFLAGS)) $(O) $(DEPCFLAGS) -o $@ -c $<
@@ -19,10 +19,10 @@ fundriver.o: fundriver.cc $(BUILDSTAMP)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(O) $(DEPCFLAGS) -o $@ -c $<
 
 %.o: %.s $(BUILDSTAMP)
-	$(call run,$(CXX) -o $@ -c,ASSEMBLE,$<)
+	$(CXX) -o $@ -c $<
 
 fun%: fun%.o fundriver.o
-	$(CXX) $(CXXFLAGS) $(O) -o $@ $^ $(LDFLAGS)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $(O) -o $@ $^
 
 
 clean:

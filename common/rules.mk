@@ -1,12 +1,42 @@
-# are we using clang?
-ISCLANG := $(shell if $(CC) --version | grep -e 'LLVM\|clang' >/dev/null; then echo 1; else echo 0; fi)
-
+# compiler flags
 CFLAGS := -std=gnu11 -W -Wall -Wshadow -g $(DEFS) $(CFLAGS)
 CXXFLAGS := -std=gnu++1z -W -Wall -Wshadow -g $(DEFS) $(CXXFLAGS)
 O ?= -O3
 ifeq ($(filter 0 1 2 3 s,$(O)),$(strip $(O)))
 override O := -O$(O)
 endif
+
+PIE ?= 1
+ifeq ($(PIE),0)
+LDFLAGS += -no-pie
+endif
+
+# compiler variant
+ifeq ($(COMPILER),clang)
+ifeq ($(origin CC),default)
+ifeq ($(shell if clang --version | grep -e 'LLVM\|clang' >/dev/null; then echo 1; else echo 0; fi),1)
+CC = clang
+endif
+endif
+ifeq ($(origin CXX),default)
+ifeq ($(shell if clang++ --version | grep -e 'LLVM\|clang' >/dev/null; then echo 1; else echo 0; fi),1)
+CXX = clang++
+endif
+endif
+endif
+ifeq ($(COMPILER),gcc)
+ifeq ($(origin CC),default)
+ifeq ($(shell if gcc --version | grep -e 'Free Software' >/dev/null; then echo 1; else echo 0; fi),1)
+CC = gcc
+endif
+endif
+ifeq ($(origin CXX),default)
+ifeq ($(shell if g++ --version | grep -e 'Free Software' >/dev/null; then echo 1; else echo 0; fi),1)
+CXX = g++
+endif
+endif
+endif
+ISCLANG := $(shell if $(CC) --version | grep -e 'LLVM\|clang' >/dev/null; then echo 1; else echo 0; fi)
 
 # sanitizer arguments
 ifndef SAN
@@ -64,8 +94,8 @@ endif
 ifneq ($(strip $(DEP_CC)),$(strip $(CC) $(CPPFLAGS) $(CFLAGS) $(O)))
 DEP_CC := $(shell mkdir -p $(DEPSDIR); echo >$(BUILDSTAMP); echo "DEP_CC:=$(CC) $(CPPFLAGS) $(CFLAGS) $(O)" >$(DEPSDIR)/_cc.d)
 endif
-ifneq ($(strip $(DEP_CXX)),$(strip $(CXX) $(CPPFLAGS) $(CXXFLAGS) $(O)))
-DEP_CXX := $(shell mkdir -p $(DEPSDIR); echo >$(BUILDSTAMP); echo "DEP_CXX:=$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(O)" >$(DEPSDIR)/_cxx.d)
+ifneq ($(strip $(DEP_CXX)),$(strip $(CXX) $(CPPFLAGS) $(CXXFLAGS) $(O) $(LDFLAGS)))
+DEP_CXX := $(shell mkdir -p $(DEPSDIR); echo >$(BUILDSTAMP); echo "DEP_CXX:=$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(O) $(LDFLAGS)" >$(DEPSDIR)/_cxx.d)
 endif
 
 

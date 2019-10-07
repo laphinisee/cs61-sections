@@ -1,0 +1,4 @@
+*.o
+*.unsafe
+attackme
+quotes

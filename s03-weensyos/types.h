@@ -54,6 +54,7 @@ inline T* mem_container(U* ptr, U (T::* mem_ptr)) {
 
 #define __section(x) __attribute__((section(x)))
 #define __no_asan    __attribute__((no_sanitize_address))
+#define __noinline   __attribute__((noinline))
 
 #ifdef __cplusplus
 #define __always_inline inline __attribute__((always_inline))

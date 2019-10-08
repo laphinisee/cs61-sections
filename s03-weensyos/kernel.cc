@@ -250,13 +250,10 @@ uintptr_t syscall(regstate* regs) {
         current->regs.reg_rax = 0;
         schedule();             // does not return
 
-    case SYSCALL_WRITE: {
-        cursorpos = console_printf(cursorpos, 0x0700, "%.*s",
-                                   (int) regs->reg_rsi,
-                                   (const char*) regs->reg_rdi);
-        console_show_cursor(cursorpos);
+    case SYSCALL_WRITE:
+        console_puts(-1, 0x0700, (const char*) regs->reg_rdi,
+                     regs->reg_rsi);
         return 0;
-    }
 
     default:
         panic("Unexpected system call %ld!\n", regs->reg_rax);

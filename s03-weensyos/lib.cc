@@ -258,11 +258,8 @@ constexpr char printfmt<long>::spec[];
 constexpr char printfmt<unsigned long>::spec[];
 
 
-// console_vprintf, console_printf
-//    Print a message onto the console, starting at the given cursor position.
-
-// snprintf, vsnprintf
-//    Format a string into a buffer.
+// printer_vprintf
+//    Format and print a string into a generic printer object.
 
 static char* fill_numbuf(char* numbuf_end, unsigned long val, int base) {
     static const char upper_digits[] = "0123456789ABCDEF";
@@ -294,13 +291,13 @@ static const char flag_chars[] = "#0- +";
 #define FLAG_NEGATIVE           (1<<7)
 #define FLAG_ALT2               (1<<8)
 
-void printer_vprintf(printer* p, int color, const char* format, va_list val) {
+void printer::vprintf(int color, const char* format, va_list val) {
 #define NUMBUFSIZ 24
     char numbuf[NUMBUFSIZ];
 
     for (; *format; ++format) {
         if (*format != '%') {
-            p->putc(p, *format, color);
+            putc(*format, color);
             continue;
         }
 
@@ -449,126 +446,51 @@ void printer_vprintf(printer* p, int color, const char* format, va_list val) {
 
         width -= datalen + zeros + strlen(prefix);
         for (; !(flags & FLAG_LEFTJUSTIFY) && width > 0; --width) {
-            p->putc(p, ' ', color);
+            putc(' ', color);
         }
         for (; *prefix; ++prefix) {
-            p->putc(p, *prefix, color);
+            putc(*prefix, color);
         }
         for (; zeros > 0; --zeros) {
-            p->putc(p, '0', color);
+            putc('0', color);
         }
         for (; datalen > 0; ++data, --datalen) {
-            p->putc(p, *data, color);
+            putc(*data, color);
         }
         for (; width > 0; --width) {
-            p->putc(p, ' ', color);
+            putc(' ', color);
         }
     }
 }
 
 
-typedef struct console_printer {
-    printer p;
-    uint16_t* cursor;
-    int scroll;
-} console_printer;
+// vsnprintf, snprintf
+//    Format a string into a sized buffer.
 
-static void console_putc(printer* p, unsigned char c, int color) {
-    console_printer* cp = (console_printer*) p;
-    while (cp->cursor >= console + CONSOLE_ROWS * CONSOLE_COLUMNS) {
-        if (cp->scroll) {
-            memmove(console, console + CONSOLE_COLUMNS,
-                    (CONSOLE_ROWS - 1) * CONSOLE_COLUMNS * sizeof(*console));
-            memset(console + (CONSOLE_ROWS - 1) * CONSOLE_COLUMNS,
-                   0, CONSOLE_COLUMNS * sizeof(*console));
-            cp->cursor -= CONSOLE_COLUMNS;
-        } else {
-            cp->cursor = console;
+struct string_printer : public printer {
+    char* s_;
+    char* end_;
+    size_t n_;
+    string_printer(char* s, size_t size)
+        : s_(s), end_(s + size), n_(0) {
+    }
+    void putc(unsigned char c, int) override {
+        if (s_ < end_) {
+            *s_++ = c;
         }
+        ++n_;
     }
-    if (c == '\n') {
-        int pos = (cp->cursor - console) % 80;
-        for (; pos != 80; pos++) {
-            *cp->cursor++ = ' ' | color;
-        }
-    } else {
-        *cp->cursor++ = c | color;
-    }
-}
-
-int console_vprintf(int cpos, int color, const char* format, va_list val) {
-    struct console_printer cp;
-    cp.p.putc = console_putc;
-    cp.cursor = console;
-    cp.scroll = cpos < 0;
-    if (cpos < 0) {
-        cp.cursor += cursorpos;
-    } else if (cpos <= CONSOLE_ROWS * CONSOLE_COLUMNS) {
-        cp.cursor += cpos;
-    }
-    printer_vprintf(&cp.p, color, format, val);
-    if (cpos < 0) {
-        cursorpos = cp.cursor - console;
-#if WEENSYOS_KERNEL
-        extern void console_show_cursor(int);
-        console_show_cursor(cp.cursor - console);
-#endif
-    }
-    return cp.cursor - console;
-}
-
-int console_printf(int cpos, int color, const char* format, ...) {
-    va_list val;
-    va_start(val, format);
-    cpos = console_vprintf(cpos, color, format, val);
-    va_end(val);
-    return cpos;
-}
-
-void console_printf(int color, const char* format, ...) {
-    va_list val;
-    va_start(val, format);
-    console_vprintf(-1, color, format, val);
-    va_end(val);
-}
-
-void console_printf(const char* format, ...) {
-    va_list val;
-    va_start(val, format);
-    console_vprintf(-1, 0x700, format, val);
-    va_end(val);
-}
-
-
-typedef struct string_printer {
-    printer p;
-    char* s;
-    char* end;
-    size_t n;
-} string_printer;
-
-static void string_putc(printer* p, unsigned char c, int color) {
-    string_printer* sp = (string_printer*) p;
-    if (sp->s < sp->end) {
-        *sp->s++ = c;
-    }
-    ++sp->n;
-    (void) color;
-}
+};
 
 ssize_t vsnprintf(char* s, size_t size, const char* format, va_list val) {
-    string_printer sp;
-    sp.p.putc = string_putc;
-    sp.s = s;
-    sp.end = s + size;
-    sp.n = 0;
-    printer_vprintf(&sp.p, 0, format, val);
-    if (size && sp.s < sp.end) {
-        *sp.s = 0;
+    string_printer sp(s, size);
+    sp.vprintf(0, format, val);
+    if (size && sp.s_ < sp.end_) {
+        *sp.s_ = 0;
     } else if (size) {
-        sp.end[-1] = 0;
+        sp.end_[-1] = 0;
     }
-    return sp.n;
+    return sp.n_;
 }
 
 ssize_t snprintf(char* s, size_t size, const char* format, ...) {
@@ -577,6 +499,131 @@ ssize_t snprintf(char* s, size_t size, const char* format, ...) {
     int n = vsnprintf(s, size, format, val);
     va_end(val);
     return n;
+}
+
+
+// console_clear
+//    Erases the console and moves the cursor to the upper left (CPOS(0, 0)).
+
+void console_clear() {
+    for (int i = 0; i < CONSOLE_ROWS * CONSOLE_COLUMNS; ++i) {
+        console[i] = ' ' | 0x0700;
+    }
+    cursorpos = 0;
+}
+
+
+// console_puts
+//    Put a string to the console, starting at the given cursor position.
+
+struct console_printer : public printer {
+    uint16_t* cell_;
+    bool scroll_;
+    console_printer(int cpos, bool scroll);
+    inline void putc(unsigned char c, int color) override;
+    void scroll();
+    void move_cursor();
+};
+
+__noinline
+console_printer::console_printer(int cpos, bool scroll)
+    : cell_(console), scroll_(scroll) {
+    if (cpos < 0) {
+        cell_ += cursorpos;
+    } else if (cpos <= CONSOLE_ROWS * CONSOLE_COLUMNS) {
+        cell_ += cpos;
+    }
+}
+
+__noinline
+void console_printer::scroll() {
+    assert(cell_ >= console + CONSOLE_ROWS * CONSOLE_COLUMNS);
+    if (scroll_) {
+        memmove(console, console + CONSOLE_COLUMNS,
+                (CONSOLE_ROWS - 1) * CONSOLE_COLUMNS * sizeof(*console));
+        memset(console + (CONSOLE_ROWS - 1) * CONSOLE_COLUMNS,
+               0, CONSOLE_COLUMNS * sizeof(*console));
+        cell_ -= CONSOLE_COLUMNS;
+    } else {
+        cell_ = console;
+    }
+}
+
+__noinline
+void console_printer::move_cursor() {
+    cursorpos = cell_ - console;
+#if WEENSYOS_KERNEL
+    extern void console_show_cursor(int);
+    console_show_cursor(cursorpos);
+#endif
+}
+
+inline void console_printer::putc(unsigned char c, int color) {
+    while (cell_ >= console + CONSOLE_ROWS * CONSOLE_COLUMNS) {
+        scroll();
+    }
+    if (c == '\n') {
+        int pos = (cell_ - console) % 80;
+        while (pos != 80) {
+            *cell_++ = ' ' | color;
+            ++pos;
+        }
+    } else {
+        *cell_++ = c | color;
+    }
+}
+
+__noinline
+int console_puts(int cpos, int color, const char* s, size_t len) {
+    console_printer cp(cpos, cpos < 0);
+    while (len > 0) {
+        cp.putc(*s, color);
+        ++s;
+        --len;
+    }
+    if (cpos < 0) {
+        cp.move_cursor();
+    }
+    return cp.cell_ - console;
+}
+
+
+// console_vprintf, console_printf
+//    Print a message onto the console, starting at the given cursor position.
+
+__noinline
+int console_vprintf(int cpos, int color, const char* format, va_list val) {
+    console_printer cp(cpos, cpos < 0);
+    cp.vprintf(color, format, val);
+    if (cpos < 0) {
+        cp.move_cursor();
+    }
+    return cp.cell_ - console;
+}
+
+__noinline
+int console_printf(int cpos, int color, const char* format, ...) {
+    va_list val;
+    va_start(val, format);
+    cpos = console_vprintf(cpos, color, format, val);
+    va_end(val);
+    return cpos;
+}
+
+__noinline
+void console_printf(int color, const char* format, ...) {
+    va_list val;
+    va_start(val, format);
+    console_vprintf(-1, color, format, val);
+    va_end(val);
+}
+
+__noinline
+void console_printf(const char* format, ...) {
+    va_list val;
+    va_start(val, format);
+    console_vprintf(-1, 0x700, format, val);
+    va_end(val);
 }
 
 
@@ -602,17 +649,6 @@ void error_printf(const char* format, ...) {
     va_start(val, format);
     error_vprintf(-1, COLOR_ERROR, format, val);
     va_end(val);
-}
-
-
-// console_clear
-//    Erases the console and moves the cursor to the upper left (CPOS(0, 0)).
-
-void console_clear() {
-    for (int i = 0; i < CONSOLE_ROWS * CONSOLE_COLUMNS; ++i) {
-        console[i] = ' ' | 0x0700;
-    }
-    cursorpos = 0;
 }
 
 

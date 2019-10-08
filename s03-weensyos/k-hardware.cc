@@ -594,9 +594,8 @@ static void delay() {
     (void) inb(0x84);
 }
 
-static void parallel_port_putc(printer* p, unsigned char c, int color) {
+static void parallel_port_putc(unsigned char c) {
     static int initialized;
-    (void) p, (void) color;
     if (!initialized) {
         outb(IO_PARALLEL1_CONTROL, 0);
         initialized = 1;
@@ -614,10 +613,17 @@ static void parallel_port_putc(printer* p, unsigned char c, int color) {
          | IO_PARALLEL_CONTROL_INIT);
 }
 
+namespace {
+struct log_printer : public printer {
+    void putc(unsigned char c, int) override {
+        parallel_port_putc(c);
+    }
+};
+}
+
 void log_vprintf(const char* format, va_list val) {
-    printer p;
-    p.putc = parallel_port_putc;
-    printer_vprintf(&p, 0, format, val);
+    log_printer p;
+    p.vprintf(0, format, val);
 }
 
 void log_printf(const char* format, ...) {

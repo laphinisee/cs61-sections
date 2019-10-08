@@ -215,7 +215,7 @@ inline uint32_t crc32c(const void* buf, size_t sz) {
 #define SYSCALL_WRITE           3
 
 
-// Console printing
+// CGA console printing
 
 #define CPOS(row, col)  ((row) * 80 + (col))
 #define CROW(cpos)      ((cpos) / 80)
@@ -234,8 +234,25 @@ void console_clear();
 
 #define COLOR_ERROR 0xC000
 
+
+// console_puts(cursor, color, s, len)
+//    Write a string to the CGA console.
+//
+//    The `cursor` argument is a cursor position, such as `CPOS(r, c)`
+//    for row number `r` and column number `c`. The `color` argument
+//    is the initial color used to print; 0x0700 is a good choice
+//    (grey on black).
+//
+//    Returns the final position of the cursor.
+int console_puts(int cpos, int color, const char* s, size_t len);
+
+// Helper versions that default to printing white-on-black at the cursor.
+void console_puts(int color, const char* s, size_t len);
+void console_puts(const char* s, size_t len);
+
+
 // console_printf(cursor, color, format, ...)
-//    Format and print a message to the x86 console.
+//    Format and print a message to the CGA console.
 //
 //    The `format` argument supports some of the C printf function's escapes:
 //    %d (to print an integer in decimal notation), %u (to print an unsigned
@@ -246,33 +263,28 @@ void console_clear();
 //    The `cursor` argument is a cursor position, such as `CPOS(r, c)` for
 //    row number `r` and column number `c`.
 //
-//    The `color` argument is the initial color used to print. 0x0700 is a
-//    good choice (grey on black). The `format` escape %C changes the color
-//    being printed.  It takes an integer from the parameter list.
+//    The `color` argument is the initial color used to print. The
+//    `format` escape %C changes the color being printed; it takes an
+//    integer from the parameter list.
 //
 //    Returns the final position of the cursor.
-int console_printf(int cpos, int color, const char* format, ...)
-    __attribute__((noinline));
+int console_printf(int cpos, int color, const char* format, ...);
 
 // console_vprintf(cpos, color, format val)
 //    The vprintf version of console_printf.
-int console_vprintf(int cpos, int color, const char* format, va_list val)
-    __attribute__((noinline));
+int console_vprintf(int cpos, int color, const char* format, va_list val);
 
 // Helper versions that default to printing white-on-black at the cursor.
-void console_printf(int color, const char* format, ...)
-    __attribute__((noinline));
-void console_printf(const char* format, ...)
-    __attribute__((noinline));
+void console_printf(int color, const char* format, ...);
+void console_printf(const char* format, ...);
+
 
 // Generic print library
 
-typedef struct printer printer;
 struct printer {
-    void (*putc)(printer* p, unsigned char c, int color);
+    virtual void putc(unsigned char c, int color) = 0;
+    void vprintf(int color, const char* format, va_list val);
 };
-
-void printer_vprintf(printer* p, int color, const char* format, va_list val);
 
 
 // error_printf(cursor, color, format, ...)

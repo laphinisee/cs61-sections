@@ -262,9 +262,6 @@ void init_cpu_state() {
 void init_timer(int rate) {
     auto& lapic = lapicstate::get();
     if (rate > 0) {
-        lapic.write(lapic.reg_timer_divide, lapic.timer_divide_1);
-        lapic.write(lapic.reg_lvt_timer,
-                    lapic.timer_periodic | (INT_IRQ + IRQ_TIMER));
         lapic.write(lapic.reg_timer_initial_count, 1000000000 / rate);
     } else {
         lapic.write(lapic.reg_timer_initial_count, 0);
@@ -685,16 +682,42 @@ void log_backtrace(const char* prefix, uintptr_t rsp, uintptr_t rbp) {
 }
 
 
-// error_vprintf
+// error_vprintf, error_printf
 //    Print debugging messages to the console and to the host's
 //    `log.txt` file via `log_printf`.
 
+__noinline
 int error_vprintf(int cpos, int color, const char* format, va_list val) {
     va_list val2;
     __builtin_va_copy(val2, val);
     log_vprintf(format, val2);
     va_end(val2);
     return console_vprintf(cpos, color, format, val);
+}
+
+__noinline
+int error_printf(int cpos, int color, const char* format, ...) {
+    va_list val;
+    va_start(val, format);
+    cpos = error_vprintf(cpos, color, format, val);
+    va_end(val);
+    return cpos;
+}
+
+__noinline
+void error_printf(int color, const char* format, ...) {
+    va_list val;
+    va_start(val, format);
+    error_vprintf(-1, color, format, val);
+    va_end(val);
+}
+
+__noinline
+void error_printf(const char* format, ...) {
+    va_list val;
+    va_start(val, format);
+    error_vprintf(-1, COLOR_ERROR, format, val);
+    va_end(val);
 }
 
 

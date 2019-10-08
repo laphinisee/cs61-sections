@@ -16,7 +16,7 @@ class vmiter {
     inline vmiter(const proc* p, uintptr_t va = 0);
 
     inline uintptr_t va() const;      // current virtual address
-    inline uintptr_t last_va() const; // one past last va in this entry
+    inline uintptr_t last_va() const; // one past last va in this range
     inline bool low() const;          // is va low?
     inline uint64_t pa() const;       // current physical address
     template <typename T = void*>

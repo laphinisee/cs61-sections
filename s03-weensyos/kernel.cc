@@ -165,8 +165,7 @@ void exception(regstate* regs) {
     /* log_printf("proc %d: exception %d at rip %p\n",
                 current->pid, regs->reg_intno, regs->reg_rip); */
 
-    // Show the current cursor location
-    // (unless this is a kernel fault).
+    // show the current cursor location
     console_show_cursor(cursorpos);
 
     // If Control-C was typed, exit the virtual machine.
@@ -233,7 +232,7 @@ uintptr_t syscall(regstate* regs) {
     /* log_printf("proc %d: syscall %d at rip %p\n",
                  current->pid, regs->reg_rax, regs->reg_rip); */
 
-    // Show the current cursor location.
+    // show the current cursor location
     console_show_cursor(cursorpos);
 
     // If Control-C was typed, exit the virtual machine.
@@ -270,7 +269,7 @@ uintptr_t syscall(regstate* regs) {
 
 void schedule() {
     pid_t pid = current->pid;
-    for (unsigned spins = 0; true; ++spins) {
+    for (unsigned spins = 1; true; ++spins) {
         pid = (pid + 1) % NPROC;
         if (ptable[pid].state == P_RUNNABLE) {
             run(&ptable[pid]);

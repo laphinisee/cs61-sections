@@ -236,7 +236,7 @@ void console_memviewer(proc* vmp) {
 
     for (int pn = 0; pn * PAGESIZE < memusage::max_view_pa; ++pn) {
         if (pn % 64 == 0) {
-            console_printf(CPOS(1 + pn/64, 3), 0x0F00, "0x%06X", pn << 12);
+            console_printf(CPOS(1 + pn/64, 3), 0x0F00, "0x%06X ", pn << 12);
         }
         console[CPOS(1 + pn/64, 12 + pn%64)] = mu.symbol_at(pn * PAGESIZE);
     }

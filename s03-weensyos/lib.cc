@@ -1,5 +1,8 @@
 #include "lib.hh"
 #include "x86-64.h"
+#if WEENSYOS_KERNEL
+# include "kernel.hh"
+#endif
 
 // lib.cc
 //
@@ -627,30 +630,7 @@ void console_printf(const char* format, ...) {
 }
 
 
-// k-hardware.cc/p-lib.cc supplies error_vprintf
-
-int error_printf(int cpos, int color, const char* format, ...) {
-    va_list val;
-    va_start(val, format);
-    cpos = error_vprintf(cpos, color, format, val);
-    va_end(val);
-    return cpos;
-}
-
-void error_printf(int color, const char* format, ...) {
-    va_list val;
-    va_start(val, format);
-    error_vprintf(-1, color, format, val);
-    va_end(val);
-}
-
-void error_printf(const char* format, ...) {
-    va_list val;
-    va_start(val, format);
-    error_vprintf(-1, COLOR_ERROR, format, val);
-    va_end(val);
-}
-
+// assertion support
 
 void assert_memeq_fail(const char* file, int line, const char* msg,
                        const char* x, const char* y, size_t sz) {
@@ -662,11 +642,18 @@ void assert_memeq_fail(const char* file, int line, const char* msg,
     size_t epos = pos + 10 < sz ? pos + 10 : sz;
     const char* ellipsis1 = spos > 0 ? "..." : "";
     const char* ellipsis2 = epos < sz ? "..." : "";
-    error_printf(CPOS(22, 0), COLOR_ERROR,
-                 "%s:%d: \"%s%.*s%s\" != \"%s%.*s%s\" @%zu\n",
-                 file, line,
-                 ellipsis1, int(epos - spos), x + spos, ellipsis2,
-                 ellipsis1, int(epos - spos), y + spos, ellipsis2, pos);
+
+#if WEENSYOS_KERNEL
+    log_printf("%s:%d: \"%s%.*s%s\" != \"%s%.*s%s\" @%zu\n",
+               file, line,
+               ellipsis1, int(epos - spos), x + spos, ellipsis2,
+               ellipsis1, int(epos - spos), y + spos, ellipsis2, pos);
+#endif
+    console_printf(CPOS(22, 0), COLOR_ERROR,
+                   "%s:%d: \"%s%.*s%s\" != \"%s%.*s%s\" @%zu\n",
+                   file, line,
+                   ellipsis1, int(epos - spos), x + spos, ellipsis2,
+                   ellipsis1, int(epos - spos), y + spos, ellipsis2, pos);
     assert_fail(file, line, msg);
 }
 

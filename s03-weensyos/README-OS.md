@@ -40,7 +40,7 @@ more fundamental issues. Here is an overview of the code.
 * `k-vmiter.hh`: Virtual and physical memory iterators as described in
   Section 4.
 * `p-allocator.cc`, `p-fork.cc`, and `p-forkexit.cc`: The applications.
-  Uses functions declared and described in `process.hh` and `lib.hh`.
+  Uses functions declared and described in `u-lib.hh` and `lib.hh`.
 
 ### Support code
 

@@ -246,10 +246,6 @@ void console_clear();
 //    Returns the final position of the cursor.
 int console_puts(int cpos, int color, const char* s, size_t len);
 
-// Helper versions that default to printing white-on-black at the cursor.
-void console_puts(int color, const char* s, size_t len);
-void console_puts(const char* s, size_t len);
-
 
 // console_printf(cursor, color, format, ...)
 //    Format and print a message to the CGA console.

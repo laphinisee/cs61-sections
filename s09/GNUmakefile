@@ -1,4 +1,4 @@
-PROGRAMS = onetwothree bathroom1 bathroom2
+PROGRAMS = sample01 sample02 sample03 onetwothree bathroom1 bathroom2
 all: $(PROGRAMS)
 
 WANT_TSAN = 1
